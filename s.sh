@@ -18,28 +18,19 @@ for cmd in curl tar gzip bash; do
     fi
 done
 
-# Check if /usr/local is writable
-if [ ! -w /usr/local ]; then
-    echo "[*] /usr/local is not writable. Attempting to remount read-write..."
-    sudo mount -o remount,rw /usr/local || {
-        echo "[!] Failed to remount /usr/local. You may need to enable Linux (Crostini) or choose another install method."
-        exit 1
-    }
-else
-    echo "[*] /usr/local is writable."
-fi
-
-# Remove old Chromebrew install if it exists
+# /usr/local is read-only, so delete contents if any
 if [ -d /usr/local ]; then
-    echo "[*] Cleaning /usr/local directory for fresh install..."
-    sudo rm -rf /usr/local/*
+    echo "[*] Cleaning contents of /usr/local ..."
+    sudo rm -rf /usr/local/* /usr/local/.??* 2>/dev/null || echo "[!] Some files could not be deleted, continuing..."
+else
+    echo "[*] /usr/local does not exist, proceeding..."
 fi
 
 # Run Chromebrew install script
 echo "[*] Running Chromebrew install script..."
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/skycocker/chromebrew/master/install.sh)"
 
-# Add Chromebrew to PATH
+# Add Chromebrew to PATH if not already added
 if ! grep -q '/usr/local/bin' ~/.bashrc; then
     echo 'export PATH="/usr/local/bin:$PATH"' >> ~/.bashrc
 fi
