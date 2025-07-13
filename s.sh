@@ -1,45 +1,55 @@
 #!/bin/bash
 
-# Chromebrew Installer (Clean Install)
-# Tested on ChromeOS v2 shell (Dev Mode, chronos user)
-
-# Exit on any error
 set -e
 
-echo "[*] Starting clean Chromebrew install..."
+echo "[*] Starting Chromebrew install script..."
 
-# Step 1: Must be 'chronos'
+# Ensure running as 'chronos'
 if [ "$USER" != "chronos" ]; then
     echo "[!] Please run this script as user 'chronos', not root."
     exit 1
 fi
 
-# Step 2: Check dependencies
+# Check required commands
 for cmd in curl tar gzip bash; do
-    if ! command -v $cmd &> /dev/null; then
+    if ! command -v "$cmd" >/dev/null 2>&1; then
         echo "[!] Missing dependency: $cmd"
         exit 1
     fi
 done
 
-# Step 3: Clean any old Chromebrew install
-echo "[*] Cleaning old Chromebrew install (if any)..."
-sudo rm -rf /usr/local
+# Check if /usr/local is writable
+if [ ! -w /usr/local ]; then
+    echo "[*] /usr/local is not writable. Attempting to remount read-write..."
+    sudo mount -o remount,rw /usr/local || {
+        echo "[!] Failed to remount /usr/local. You may need to enable Linux (Crostini) or choose another install method."
+        exit 1
+    }
+else
+    echo "[*] /usr/local is writable."
+fi
 
-# Step 4: Run Chromebrew installer
-echo "[*] Downloading and running Chromebrew install script..."
+# Remove old Chromebrew install if it exists
+if [ -d /usr/local ]; then
+    echo "[*] Cleaning /usr/local directory for fresh install..."
+    sudo rm -rf /usr/local/*
+fi
+
+# Run Chromebrew install script
+echo "[*] Running Chromebrew install script..."
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/skycocker/chromebrew/master/install.sh)"
 
-# Step 5: Add Chromebrew to PATH
-echo "[*] Updating PATH..."
-echo 'export PATH="/usr/local/bin:$PATH"' >> ~/.bashrc
+# Add Chromebrew to PATH
+if ! grep -q '/usr/local/bin' ~/.bashrc; then
+    echo 'export PATH="/usr/local/bin:$PATH"' >> ~/.bashrc
+fi
 source ~/.bashrc
 
-# Step 6: Confirm success
-if command -v crew &> /dev/null; then
+# Confirm installation
+if command -v crew >/dev/null 2>&1; then
     echo "[✔] Chromebrew installed successfully!"
-    echo "You can now run: crew install protobuf"
+    echo "Run 'crew install protobuf' to install protobuf."
 else
-    echo "[✘] Install failed. Please check output for errors."
+    echo "[✘] Chromebrew install failed or crew not found in PATH."
     exit 1
 fi
